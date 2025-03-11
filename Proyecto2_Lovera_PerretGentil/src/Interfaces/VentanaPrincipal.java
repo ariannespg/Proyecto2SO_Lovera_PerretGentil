@@ -9,20 +9,22 @@ package Interfaces;
  *
  * @author adrianlovera
  */
+
 import Utilidades.SimuladorDisco;
 import java.awt.*;
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.*;
 import modelos.*;
 
 public class VentanaPrincipal extends JFrame {
 
     private SimuladorDisco sd;
     private JTree tree;
+    private DefaultTreeModel modeloArbol;
+    private DefaultMutableTreeNode raiz;
     private JTextArea estadoDisco;
-
+    
     public VentanaPrincipal() {
-        // Inicialización básica
         setTitle("Simulador de Sistema de Archivos");
         setSize(700, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -36,90 +38,83 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void initUI() {
-    setLayout(new BorderLayout());
+        setLayout(new BorderLayout());
 
-    // JTree inicial con nodo raíz
-    DefaultMutableTreeNode raiz = new DefaultMutableTreeNode("Raíz");
-    tree = new JTree(raiz);
-    JScrollPane panelTree = new JScrollPane(tree);
-    panelTree.setPreferredSize(new Dimension(150, 300));
+        // Panel Izquierdo (JTree - Estructura de archivos)
+        raiz = new DefaultMutableTreeNode("Raíz");
+        modeloArbol = new DefaultTreeModel(raiz);
+        tree = new JTree(modeloArbol);
+        JScrollPane panelIzquierdo = new JScrollPane(tree);
+        panelIzquierdo.setPreferredSize(new Dimension(200, 400));
 
-    // Área central mostrando estado del disco
-    estadoDisco = new JTextArea();
-    estadoDisco.setEditable(false);
-    JScrollPane panelEstadoDisco = new JScrollPane(estadoDisco);
-    actualizarEstadoDisco();
-
-    // Botones inferiores
-    JButton btnAsignar = new JButton("Asignar 3 bloques");
-    btnAsignar.addActionListener(e -> {
-        Bloque primerBloque = sd.asignarBloques(3);
-        if (primerBloque != null) {
-            JOptionPane.showMessageDialog(this, "Se asignaron 3 bloques correctamente.");
-        } else {
-            JOptionPane.showMessageDialog(this, "No hay bloques suficientes.");
-        }
+        // Panel Central (Estado del disco)
+        estadoDisco = new JTextArea();
+        estadoDisco.setEditable(false);
         actualizarEstadoDisco();
-    });
+        JScrollPane scrollCentral = new JScrollPane(estadoDisco);
 
-    JButton btnLiberar = new JButton("Liberar bloques");
-    btnLiberar.addActionListener(e -> {
-        Bloque primerBloque = sd.getBloques()[0]; // Solo prueba básica
-        sd.liberarBloques(primerBloque);
-        JOptionPane.showMessageDialog(this, "Bloques liberados correctamente.");
-        actualizarEstadoDisco();
-    });
+        // Panel Inferior (Botones para gestión de archivos y directorios)
+        JButton btnCrearArchivo = new JButton("Crear Archivo");
+        btnCrearArchivo.addActionListener(e -> crearArchivo());
 
-    // Define claramente panelInferior aquí:
-    JPanel panelInferior = new JPanel();
-    panelInferior.add(btnAsignar);
-    panelInferior.add(btnLiberar);
+        JButton btnCrearDirectorio = new JButton("Crear Directorio");
+        btnCrearDirectorio.addActionListener(e -> crearDirectorio());
 
-    // Agregando componentes al frame principal
-    add(panelTree, BorderLayout.WEST);
-    add(new JScrollPane(estadoDisco = new JTextArea()), BorderLayout.CENTER);
-    add(panelInferior, BorderLayout.SOUTH);
+        JButton btnEliminar = new JButton("Eliminar");
+        btnEliminar.addActionListener(e -> eliminarNodo());
 
-    actualizarEstadoDisco();
+        JPanel panelBotones = new JPanel();
+        panelBotones.add(btnCrearArchivo);
+        panelBotones.add(btnCrearDirectorio);
+        panelBotones.add(btnEliminar);
 
-    setSize(600, 400);
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    setLocationRelativeTo(null);
-}
-
-    private JPanel panelInferior(JButton btnAsignar, JButton btnLiberar) {
-    JPanel panel = new JPanel();
-    panel.setLayout(new FlowLayout());
-
-    panel.add(btnAsignar);
-    panel.add(btnLiberar);
-
-    return panel;
-}
-
-    private JPanel panelTree(){
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(tree, BorderLayout.CENTER);
-        return panel;
+        // Agregar componentes a la ventana
+        add(panelIzquierdo, BorderLayout.WEST);
+        add(scrollCentral, BorderLayout.CENTER);
+        add(panelBotones, BorderLayout.SOUTH);
     }
 
-    private JPanel panelInferior(){
-        JPanel panel = new JPanel();
-        panel.setLayout(new FlowLayout());
-        return panel;
+    private void crearArchivo() {
+        String nombre = JOptionPane.showInputDialog(this, "Nombre del archivo:");
+        if (nombre != null && !nombre.isEmpty()) {
+            DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+            if (nodoSeleccionado == null) nodoSeleccionado = raiz;
+            DefaultMutableTreeNode nuevoArchivo = new DefaultMutableTreeNode(nombre + " (Archivo)");
+            modeloArbol.insertNodeInto(nuevoArchivo, nodoSeleccionado, nodoSeleccionado.getChildCount());
+            modeloArbol.reload();
+        }
+    }
+
+    private void crearDirectorio() {
+        String nombre = JOptionPane.showInputDialog(this, "Nombre del directorio:");
+        if (nombre != null && !nombre.isEmpty()) {
+            DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+            if (nodoSeleccionado == null) nodoSeleccionado = raiz;
+            DefaultMutableTreeNode nuevoDirectorio = new DefaultMutableTreeNode(nombre + " (Directorio)");
+            modeloArbol.insertNodeInto(nuevoDirectorio, nodoSeleccionado, nodoSeleccionado.getChildCount());
+            modeloArbol.reload();
+        }
+    }
+
+    private void eliminarNodo() {
+        DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+        if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
+            modeloArbol.removeNodeFromParent(nodoSeleccionado);
+            modeloArbol.reload();
+        } else {
+            JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para eliminar.");
+        }
     }
 
     private void actualizarEstadoDisco() {
-    StringBuilder sb = new StringBuilder();
-    for (Bloque bloque : sd.getBloques()) {
-        sb.append("Bloque ")
-          .append(bloque.getId())
-          .append(": ")
-          .append(bloque.estaOcupado() ? "Ocupado" : "Libre")
-          .append("\n");
+        StringBuilder sb = new StringBuilder();
+        for (Bloque bloque : sd.getBloques()) {
+            sb.append("Bloque ").append(bloque.getId()).append(": ")
+              .append(bloque.estaOcupado() ? "Ocupado" : "Libre")
+              .append("\n");
+        }
+        estadoDisco.setText(sb.toString());
     }
-    estadoDisco.setText(sb.toString());
-}
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
@@ -127,9 +122,4 @@ public class VentanaPrincipal extends JFrame {
             vp.setVisible(true);
         });
     }
-
-
-    private boolean asignadoExitosamente(Bloque bloque) {
-    return bloque != null;
-}
 }
