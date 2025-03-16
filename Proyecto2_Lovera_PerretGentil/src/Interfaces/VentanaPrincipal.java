@@ -23,7 +23,8 @@ public class VentanaPrincipal extends JFrame {
     private DefaultTreeModel modeloArbol;
     private DefaultMutableTreeNode raiz;
     private JTextArea estadoDisco;
-    
+    private boolean esAdmin = true;
+
     public VentanaPrincipal() {
         setTitle("Simulador de Sistema de Archivos");
         setSize(700, 500);
@@ -33,27 +34,26 @@ public class VentanaPrincipal extends JFrame {
         // Inicializando Simulador de Disco
         sd = new SimuladorDisco(10);
 
-        // Componentes gráficos
         initUI();
     }
 
     private void initUI() {
         setLayout(new BorderLayout());
 
-        // Panel Izquierdo (JTree - Estructura de archivos)
+        // JTree inicial con nodo raíz
         raiz = new DefaultMutableTreeNode("Raíz");
         modeloArbol = new DefaultTreeModel(raiz);
         tree = new JTree(modeloArbol);
-        JScrollPane panelIzquierdo = new JScrollPane(tree);
-        panelIzquierdo.setPreferredSize(new Dimension(200, 400));
+        JScrollPane panelTree = new JScrollPane(tree);
+        panelTree.setPreferredSize(new Dimension(150, 300));
 
-        // Panel Central (Estado del disco)
+        // Área central mostrando estado del disco
         estadoDisco = new JTextArea();
         estadoDisco.setEditable(false);
+        JScrollPane panelEstadoDisco = new JScrollPane(estadoDisco);
         actualizarEstadoDisco();
-        JScrollPane scrollCentral = new JScrollPane(estadoDisco);
 
-        // Panel Inferior (Botones para gestión de archivos y directorios)
+        // Panel Inferior (Botones)
         JButton btnCrearArchivo = new JButton("Crear Archivo");
         btnCrearArchivo.addActionListener(e -> crearArchivo());
 
@@ -63,46 +63,107 @@ public class VentanaPrincipal extends JFrame {
         JButton btnEliminar = new JButton("Eliminar");
         btnEliminar.addActionListener(e -> eliminarNodo());
 
-        JPanel panelBotones = new JPanel();
-        panelBotones.add(btnCrearArchivo);
-        panelBotones.add(btnCrearDirectorio);
-        panelBotones.add(btnEliminar);
+        JButton btnModificar = new JButton("Modificar Archivo");
+        btnModificar.addActionListener(e -> modificarNodo());
 
-        // Agregar componentes a la ventana
-        add(panelIzquierdo, BorderLayout.WEST);
-        add(scrollCentral, BorderLayout.CENTER);
-        add(panelBotones, BorderLayout.SOUTH);
+        JButton btnAlternarModo = new JButton("Cambiar Modo (Admin/Usuario)");
+        btnAlternarModo.addActionListener(e -> alternarModo(btnCrearArchivo, btnCrearDirectorio, btnEliminar, btnModificar));
+
+        JPanel panelInferior = new JPanel();
+        panelInferior.add(btnCrearArchivo);
+        panelInferior.add(btnCrearDirectorio);
+        panelInferior.add(btnEliminar);
+        panelInferior.add(btnModificar);
+        panelInferior.add(btnAlternarModo);
+
+        // Agregando componentes al frame principal
+        add(panelTree, BorderLayout.WEST);
+        add(panelEstadoDisco, BorderLayout.CENTER);
+        add(panelInferior, BorderLayout.SOUTH);
+
+        actualizarEstadoDisco();
+    }
+
+    private void alternarModo(JButton crearArchivo, JButton crearDirectorio, JButton eliminar, JButton modificar) {
+        esAdmin = !esAdmin;
+        crearArchivo.setEnabled(esAdmin);
+        crearDirectorio.setEnabled(esAdmin);
+        eliminar.setEnabled(esAdmin);
+        modificar.setEnabled(esAdmin);
+        JOptionPane.showMessageDialog(this, esAdmin ? "Modo Administrador activado" : "Modo Usuario activado");
     }
 
     private void crearArchivo() {
+        if (!esAdmin) {
+            JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear archivos.");
+            return;
+        }
+
+        DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+        DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
+
+        if (!nodoPadre.getAllowsChildren()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un directorio válido para crear un archivo.");
+            return;
+        }
+
         String nombre = JOptionPane.showInputDialog(this, "Nombre del archivo:");
         if (nombre != null && !nombre.isEmpty()) {
-            DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-            if (nodoSeleccionado == null) nodoSeleccionado = raiz;
-            DefaultMutableTreeNode nuevoArchivo = new DefaultMutableTreeNode(nombre + " (Archivo)");
-            modeloArbol.insertNodeInto(nuevoArchivo, nodoSeleccionado, nodoSeleccionado.getChildCount());
-            modeloArbol.reload();
+            DefaultMutableTreeNode nuevoArchivo = new DefaultMutableTreeNode(nombre + " (Archivo)", false);
+            modeloArbol.insertNodeInto(nuevoArchivo, nodoPadre, nodoPadre.getChildCount());
+            tree.expandPath(new TreePath(nodoPadre.getPath()));
         }
     }
 
     private void crearDirectorio() {
+        if (!esAdmin) {
+            JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear directorios.");
+            return;
+        }
+
+        DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+        DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
+
+        if (!nodoPadre.getAllowsChildren()) {
+            JOptionPane.showMessageDialog(this, "Selecciona un directorio válido para crear un subdirectorio.");
+            return;
+        }
+
         String nombre = JOptionPane.showInputDialog(this, "Nombre del directorio:");
         if (nombre != null && !nombre.isEmpty()) {
-            DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-            if (nodoSeleccionado == null) nodoSeleccionado = raiz;
-            DefaultMutableTreeNode nuevoDirectorio = new DefaultMutableTreeNode(nombre + " (Directorio)");
-            modeloArbol.insertNodeInto(nuevoDirectorio, nodoSeleccionado, nodoSeleccionado.getChildCount());
-            modeloArbol.reload();
+            DefaultMutableTreeNode nuevoDirectorio = new DefaultMutableTreeNode(nombre + " (Directorio)", true);
+            modeloArbol.insertNodeInto(nuevoDirectorio, nodoPadre, nodoPadre.getChildCount());
+            tree.expandPath(new TreePath(nodoPadre.getPath()));
         }
     }
 
     private void eliminarNodo() {
+        if (!esAdmin) {
+            JOptionPane.showMessageDialog(this, "Modo usuario: no puede eliminar elementos.");
+            return;
+        }
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
             modeloArbol.removeNodeFromParent(nodoSeleccionado);
-            modeloArbol.reload();
         } else {
             JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para eliminar.");
+        }
+    }
+
+    private void modificarNodo() {
+        if (!esAdmin) {
+            JOptionPane.showMessageDialog(this, "Modo usuario: no puede modificar elementos.");
+            return;
+        }
+        DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+        if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
+            String nuevoNombre = JOptionPane.showInputDialog(this, "Nuevo nombre:", nodoSeleccionado.getUserObject().toString());
+            if (nuevoNombre != null && !nuevoNombre.isEmpty()) {
+                nodoSeleccionado.setUserObject(nuevoNombre);
+                modeloArbol.nodeChanged(nodoSeleccionado);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para modificar.");
         }
     }
 
@@ -123,3 +184,4 @@ public class VentanaPrincipal extends JFrame {
         });
     }
 }
+
