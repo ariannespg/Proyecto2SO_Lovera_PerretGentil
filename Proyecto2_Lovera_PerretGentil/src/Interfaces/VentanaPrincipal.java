@@ -10,6 +10,7 @@ package Interfaces;
  * @author adrianlovera
  */
 
+import Utilidades.Archivo;
 import Utilidades.SimuladorDisco;
 import java.awt.*;
 import javax.swing.*;
@@ -109,6 +110,7 @@ public class VentanaPrincipal extends JFrame {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear archivos.");
             return;
         }
+
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
 
@@ -119,14 +121,26 @@ public class VentanaPrincipal extends JFrame {
 
         String nombre = JOptionPane.showInputDialog(this, "Nombre del archivo:");
         if (nombre != null && !nombre.isEmpty()) {
-            DefaultMutableTreeNode nuevoArchivo = new DefaultMutableTreeNode(nombre + " (Archivo)", false);
-            modeloArbol.insertNodeInto(nuevoArchivo, nodoPadre, nodoPadre.getChildCount());
 
-            Bloque bloqueInicial = sd.asignarBloques(3);
+            int bloquesNecesarios = Integer.parseInt(JOptionPane.showInputDialog(this, "Cantidad de bloques a asignar:"));
+            Bloque bloqueInicial = sd.asignarBloques(bloquesNecesarios);
+
             if (bloqueInicial != null) {
-                actualizarTablaAsignacion(nombre, 3, bloqueInicial.getId());
+                Archivo nuevoArchivo = new Archivo(nombre, bloquesNecesarios, bloqueInicial);
+
+                // Agregar visualmente al árbol
+                DefaultMutableTreeNode nodoArchivo = new DefaultMutableTreeNode(nuevoArchivo.getNombre() + " (Archivo)", false);
+                modeloArbol.insertNodeInto(nodoArchivo, nodoPadre, nodoPadre.getChildCount());
+                tree.expandPath(new TreePath(nodoPadre.getPath()));
+
+                // Actualizar tabla
+                actualizarTablaAsignacion(nuevoArchivo.getNombre(), nuevoArchivo.getTamano(), nuevoArchivo.getPrimerBloque().getId());
+
+                // Actualizar visualmente el estado del disco
+                actualizarEstadoDisco();
+            } else {
+                JOptionPane.showMessageDialog(this, "No hay suficientes bloques disponibles para crear este archivo.");
             }
-            actualizarEstadoDisco();
         }
     }
 
@@ -152,16 +166,49 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void eliminarNodo() {
-        if (!esAdmin) {
-            JOptionPane.showMessageDialog(this, "Modo usuario: no puede eliminar elementos.");
-            return;
+    if (!esAdmin) {
+        JOptionPane.showMessageDialog(this, "Modo usuario: no puede eliminar elementos.");
+        return;
+    }
+    DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+
+    if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
+        String nombreNodo = nodoSeleccionado.getUserObject().toString();
+        if (nombreNodo.contains("(Archivo)")) {
+            // Obtén la referencia del archivo y libera bloques asociados (Aquí suponiendo ejemplo simple)
+            // Esto debe buscarse en una lista enlazada real idealmente
+            int primerBloque = buscarPrimerBloque(nombreNodo.replace(" (Archivo)", ""));
+            if (primerBloque >= 0) {
+                sd.liberarBloques(sd.getBloques()[primerBloque]);
+                eliminarDeTabla(nombreNodo);
+                actualizarEstadoDisco();
+            }
         }
-        DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-        if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
-            modeloArbol.removeNodeFromParent(nodoSeleccionado);
-        } else {
-            JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para eliminar.");
+
+        modeloArbol.removeNodeFromParent(nodoSeleccionado);
+    } else {
+        JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para eliminar.");
+    }
+}
+
+    // Método auxiliar para buscar en tabla y eliminar fila
+    private void eliminarDeTabla(String nombreNodo) {
+        for (int i = 0; i < modeloTabla.getRowCount(); i++) {
+            if (modeloTabla.getValueAt(i, 0).equals(nombreNodo.replace(" (Archivo)", ""))) {
+                modeloTabla.removeRow(i);
+                break;
+            }
         }
+    }
+
+    // Busca primer bloque asociado claramente al archivo
+    private int buscarPrimerBloque(String nombreArchivo) {
+        for (int i = 0; i < modeloTabla.getRowCount(); i++) {
+            if (modeloTabla.getValueAt(i, 0).equals(nombreArchivo)) {
+                return (int) modeloTabla.getValueAt(i, 2);
+            }
+        }
+        return -1;
     }
 
     private void modificarNodo() {

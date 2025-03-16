@@ -14,21 +14,21 @@ import modelos.Bloque;
  */
 public class Archivo {
     private String nombre;
-    private int tamaño; // en bloques
+    private int tamano; // Cantidad de bloques que ocupa
     private Bloque primerBloque;
 
-    public Archivo(String nombre, int tamaño) {
+    public Archivo(String nombre, int tamano, Bloque primerBloque) {
         this.nombre = nombre;
-        this.tamaño = tamaño;
-        this.primerBloque = null;
+        this.tamano = tamano;
+        this.primerBloque = primerBloque;
     }
 
     public String getNombre() {
         return nombre;
     }
 
-    public int getTamaño() {
-        return tamaño;
+    public int getTamano() {
+        return tamano;
     }
 
     public Bloque getPrimerBloque() {
