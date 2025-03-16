@@ -13,6 +13,7 @@ package Interfaces;
 import Utilidades.SimuladorDisco;
 import java.awt.*;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.*;
 import modelos.*;
 
@@ -23,17 +24,17 @@ public class VentanaPrincipal extends JFrame {
     private DefaultTreeModel modeloArbol;
     private DefaultMutableTreeNode raiz;
     private JTextArea estadoDisco;
+    private JTable tablaAsignacion;
+    private DefaultTableModel modeloTabla;
     private boolean esAdmin = true;
 
     public VentanaPrincipal() {
         setTitle("Simulador de Sistema de Archivos");
-        setSize(700, 500);
+        setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Inicializando Simulador de Disco
         sd = new SimuladorDisco(10);
-
         initUI();
     }
 
@@ -45,13 +46,20 @@ public class VentanaPrincipal extends JFrame {
         modeloArbol = new DefaultTreeModel(raiz);
         tree = new JTree(modeloArbol);
         JScrollPane panelTree = new JScrollPane(tree);
-        panelTree.setPreferredSize(new Dimension(150, 300));
+        panelTree.setPreferredSize(new Dimension(250, 300));
 
         // Área central mostrando estado del disco
         estadoDisco = new JTextArea();
         estadoDisco.setEditable(false);
         JScrollPane panelEstadoDisco = new JScrollPane(estadoDisco);
         actualizarEstadoDisco();
+
+        // Tabla de asignación (JTable)
+        String[] columnas = {"Nombre Archivo", "Bloques Asignados", "Primer Bloque"};
+        modeloTabla = new DefaultTableModel(columnas, 0);
+        tablaAsignacion = new JTable(modeloTabla);
+        JScrollPane panelTablaAsignacion = new JScrollPane(tablaAsignacion);
+        panelTablaAsignacion.setPreferredSize(new Dimension(250, 300));
 
         // Panel Inferior (Botones)
         JButton btnCrearArchivo = new JButton("Crear Archivo");
@@ -76,12 +84,15 @@ public class VentanaPrincipal extends JFrame {
         panelInferior.add(btnModificar);
         panelInferior.add(btnAlternarModo);
 
-        // Agregando componentes al frame principal
-        add(panelTree, BorderLayout.WEST);
-        add(panelEstadoDisco, BorderLayout.CENTER);
-        add(panelInferior, BorderLayout.SOUTH);
+        // Paneles divididos usando JSplitPane
+        JSplitPane splitIzquierda = new JSplitPane(JSplitPane.VERTICAL_SPLIT, panelTree, panelTablaAsignacion);
+        splitIzquierda.setDividerLocation(300);
 
-        actualizarEstadoDisco();
+        JSplitPane splitPrincipal = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitIzquierda, panelEstadoDisco);
+        splitPrincipal.setDividerLocation(500);
+
+        add(splitPrincipal, BorderLayout.CENTER);
+        add(panelInferior, BorderLayout.SOUTH);
     }
 
     private void alternarModo(JButton crearArchivo, JButton crearDirectorio, JButton eliminar, JButton modificar) {
@@ -98,7 +109,6 @@ public class VentanaPrincipal extends JFrame {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear archivos.");
             return;
         }
-
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
 
@@ -111,7 +121,12 @@ public class VentanaPrincipal extends JFrame {
         if (nombre != null && !nombre.isEmpty()) {
             DefaultMutableTreeNode nuevoArchivo = new DefaultMutableTreeNode(nombre + " (Archivo)", false);
             modeloArbol.insertNodeInto(nuevoArchivo, nodoPadre, nodoPadre.getChildCount());
-            tree.expandPath(new TreePath(nodoPadre.getPath()));
+
+            Bloque bloqueInicial = sd.asignarBloques(3);
+            if (bloqueInicial != null) {
+                actualizarTablaAsignacion(nombre, 3, bloqueInicial.getId());
+            }
+            actualizarEstadoDisco();
         }
     }
 
@@ -133,7 +148,6 @@ public class VentanaPrincipal extends JFrame {
         if (nombre != null && !nombre.isEmpty()) {
             DefaultMutableTreeNode nuevoDirectorio = new DefaultMutableTreeNode(nombre + " (Directorio)", true);
             modeloArbol.insertNodeInto(nuevoDirectorio, nodoPadre, nodoPadre.getChildCount());
-            tree.expandPath(new TreePath(nodoPadre.getPath()));
         }
     }
 
@@ -167,6 +181,10 @@ public class VentanaPrincipal extends JFrame {
         }
     }
 
+    private void actualizarTablaAsignacion(String nombreArchivo, int bloques, int primerBloque) {
+        modeloTabla.addRow(new Object[]{nombreArchivo, bloques, primerBloque});
+    }
+
     private void actualizarEstadoDisco() {
         StringBuilder sb = new StringBuilder();
         for (Bloque bloque : sd.getBloques()) {
@@ -179,8 +197,7 @@ public class VentanaPrincipal extends JFrame {
 
     public static void main(String[] args) {
         EventQueue.invokeLater(() -> {
-            VentanaPrincipal vp = new VentanaPrincipal();
-            vp.setVisible(true);
+            new VentanaPrincipal().setVisible(true);
         });
     }
 }
