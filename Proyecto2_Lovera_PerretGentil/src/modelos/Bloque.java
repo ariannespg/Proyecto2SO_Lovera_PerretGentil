@@ -8,11 +8,13 @@ public class Bloque {
     private int id;
     private boolean ocupado;
     private Bloque siguiente;
+    private String nombreArchivo; // NUEVO CAMPO
 
     public Bloque(int id) {
         this.id = id;
         this.siguiente = null;
         this.ocupado = false;
+        this.nombreArchivo = null;
     }
 
     public int getId() {
@@ -23,13 +25,15 @@ public class Bloque {
         return ocupado;
     }
 
-    public void ocupar() {
+    public void ocupar(String nombreArchivo) {
         this.ocupado = true;
+        this.nombreArchivo = nombreArchivo;
     }
 
     public void liberar() {
         this.ocupado = false;
         this.siguiente = null;
+        this.nombreArchivo = null;
     }
 
     public Bloque getSiguiente() {
@@ -38,5 +42,9 @@ public class Bloque {
 
     public void setSiguiente(Bloque siguiente) {
         this.siguiente = siguiente;
+    }
+
+    public String getNombreArchivo() {
+        return nombreArchivo;
     }
 }

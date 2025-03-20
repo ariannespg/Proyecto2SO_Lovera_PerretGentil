@@ -18,44 +18,47 @@ public class SimuladorDisco {
     private int cantidadBloques;
 
     // Constructor
-    public SimuladorDisco(int cantidadBloques) {
+    public SimuladorDisco(int cantidadBloques, Bloque[] bloquesCargados) {
         this.cantidadBloques = cantidadBloques;
-        bloques = new Bloque[cantidadBloques];
-
-        // Inicializa los bloques
-        for (int i = 0; i < cantidadBloques; i++) {
-            bloques[i] = new Bloque(i);
+        if (bloquesCargados != null) {
+            this.bloques = bloquesCargados;
+        } else {
+            bloques = new Bloque[cantidadBloques];
+            for (int i = 0; i < cantidadBloques; i++) {
+                bloques[i] = new Bloque(i);
+            }
         }
     }
 
     // Método para asignar bloques usando asignación encadenada
-    public Bloque asignarBloques(int bloquesNecesarios) {
-        Bloque primerBloque = null;
-        Bloque bloqueAnterior = null;
-        int contador = 0;
+    public Bloque asignarBloques(int bloquesNecesarios, String nombreArchivo) {
+    Bloque primerBloque = null;
+    Bloque bloqueAnterior = null;
+    int contador = 0;
 
-        for (int i = 0; i < cantidadBloques && contador < bloquesNecesarios; i++) {
-            if (!bloques[i].estaOcupado()) {
-                bloques[i].ocupar();
-                if (primerBloque == null) {
-                    primerBloque = bloques[i];
-                }
-                if (bloqueAnterior != null) {
-                    bloqueAnterior.setSiguiente(bloques[i]);
-                }
-                bloqueAnterior = bloques[i];
-                contador++;
+    for (int i = 0; i < cantidadBloques && contador < bloquesNecesarios; i++) {
+        if (!bloques[i].estaOcupado()) {
+            bloques[i].ocupar(nombreArchivo); // Aquí enviamos el nombre
+            if (primerBloque == null) {
+                primerBloque = bloques[i];
             }
+            if (bloqueAnterior != null) {
+                bloqueAnterior.setSiguiente(bloques[i]);
+            }
+            bloqueAnterior = bloques[i];
+            contador++;
         }
-
-        // Si no hay suficientes bloques disponibles
-        if (contador < bloquesNecesarios) {
-            liberarBloques(primerBloque);
-            return null;
-        }
-
-        return primerBloque;
     }
+
+    // Si no hay suficientes bloques disponibles
+    if (contador < bloquesNecesarios) {
+        liberarBloques(primerBloque);
+        return null;
+    }
+
+    return primerBloque;
+}
+
 
     // Método para liberar bloques
     public void liberarBloques(Bloque bloqueInicial) {

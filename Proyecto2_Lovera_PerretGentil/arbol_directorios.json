@@ -1,0 +1,27 @@
+{
+  "nombre": "Raíz",
+  "esDirectorio": true,
+  "hijos": [
+    {
+      "nombre": "2 (Archivo)",
+      "esDirectorio": false,
+      "hijos": []
+    },
+    {
+      "nombre": "1,1 (Directorio)",
+      "esDirectorio": true,
+      "hijos": [
+        {
+          "nombre": "3 (Archivo)",
+          "esDirectorio": false,
+          "hijos": []
+        }
+      ]
+    },
+    {
+      "nombre": "0 (Archivo)",
+      "esDirectorio": false,
+      "hijos": []
+    }
+  ]
+}

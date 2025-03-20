@@ -1,6 +1,5 @@
 package Utilidades;
 
-
 import Utilidades.Archivo;
 import Estructuras.ListaEnlazada;
 
@@ -13,7 +12,6 @@ import Estructuras.ListaEnlazada;
  *
  * @author adrianlovera
  */
-
 public class Directorio {
     private String nombre;
     private Directorio padre;

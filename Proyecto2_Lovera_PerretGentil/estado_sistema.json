@@ -1,0 +1,76 @@
+{
+  "bloques": [
+    {
+      "id": 0,
+      "ocupado": true,
+      "siguiente": {
+        "id": 1,
+        "ocupado": true,
+        "nombreArchivo": "3"
+      },
+      "nombreArchivo": "3"
+    },
+    {
+      "id": 1,
+      "ocupado": true,
+      "nombreArchivo": "3"
+    },
+    {
+      "id": 2,
+      "ocupado": true,
+      "siguiente": {
+        "id": 3,
+        "ocupado": true,
+        "nombreArchivo": "2"
+      },
+      "nombreArchivo": "2"
+    },
+    {
+      "id": 3,
+      "ocupado": true,
+      "nombreArchivo": "2"
+    },
+    {
+      "id": 4,
+      "ocupado": true,
+      "siguiente": {
+        "id": 5,
+        "ocupado": true,
+        "siguiente": {
+          "id": 6,
+          "ocupado": true,
+          "nombreArchivo": "0"
+        },
+        "nombreArchivo": "0"
+      },
+      "nombreArchivo": "0"
+    },
+    {
+      "id": 5,
+      "ocupado": true,
+      "siguiente": {
+        "id": 6,
+        "ocupado": true,
+        "nombreArchivo": "0"
+      },
+      "nombreArchivo": "0"
+    },
+    {
+      "id": 6,
+      "ocupado": true,
+      "nombreArchivo": "0"
+    },
+    {
+      "id": 7,
+      "ocupado": false
+    },
+    {
+      "id": 8,
+      "ocupado": false
+    },
+    {
+      "id": 9,
+      "ocupado": false
+    }
+  ]
+}

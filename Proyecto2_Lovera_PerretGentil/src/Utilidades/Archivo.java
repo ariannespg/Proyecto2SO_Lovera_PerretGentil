@@ -1,6 +1,5 @@
 package Utilidades;
 
-
 import modelos.Bloque;
 
 /*
