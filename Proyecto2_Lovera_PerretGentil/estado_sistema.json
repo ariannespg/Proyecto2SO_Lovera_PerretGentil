@@ -6,14 +6,14 @@
       "siguiente": {
         "id": 1,
         "ocupado": true,
-        "nombreArchivo": "3"
+        "nombreArchivo": "11"
       },
-      "nombreArchivo": "3"
+      "nombreArchivo": "11"
     },
     {
       "id": 1,
       "ocupado": true,
-      "nombreArchivo": "3"
+      "nombreArchivo": "11"
     },
     {
       "id": 2,
@@ -21,14 +21,14 @@
       "siguiente": {
         "id": 3,
         "ocupado": true,
-        "nombreArchivo": "2"
+        "nombreArchivo": "gherhgerhgerhgre"
       },
-      "nombreArchivo": "2"
+      "nombreArchivo": "gherhgerhgerhgre"
     },
     {
       "id": 3,
       "ocupado": true,
-      "nombreArchivo": "2"
+      "nombreArchivo": "gherhgerhgerhgre"
     },
     {
       "id": 4,
@@ -36,29 +36,18 @@
       "siguiente": {
         "id": 5,
         "ocupado": true,
-        "siguiente": {
-          "id": 6,
-          "ocupado": true,
-          "nombreArchivo": "0"
-        },
-        "nombreArchivo": "0"
+        "nombreArchivo": "hhoal"
       },
-      "nombreArchivo": "0"
+      "nombreArchivo": "hhoal"
     },
     {
       "id": 5,
       "ocupado": true,
-      "siguiente": {
-        "id": 6,
-        "ocupado": true,
-        "nombreArchivo": "0"
-      },
-      "nombreArchivo": "0"
+      "nombreArchivo": "hhoal"
     },
     {
       "id": 6,
-      "ocupado": true,
-      "nombreArchivo": "0"
+      "ocupado": false
     },
     {
       "id": 7,

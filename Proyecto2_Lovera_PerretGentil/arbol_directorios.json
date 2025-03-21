@@ -3,23 +3,17 @@
   "esDirectorio": true,
   "hijos": [
     {
-      "nombre": "2 (Archivo)",
+      "nombre": "11 (Archivo)",
       "esDirectorio": false,
       "hijos": []
     },
     {
-      "nombre": "1,1 (Directorio)",
-      "esDirectorio": true,
-      "hijos": [
-        {
-          "nombre": "3 (Archivo)",
-          "esDirectorio": false,
-          "hijos": []
-        }
-      ]
+      "nombre": "gherhgerhgerhgre (Archivo)",
+      "esDirectorio": false,
+      "hijos": []
     },
     {
-      "nombre": "0 (Archivo)",
+      "nombre": "hhoal (Archivo)",
       "esDirectorio": false,
       "hijos": []
     }

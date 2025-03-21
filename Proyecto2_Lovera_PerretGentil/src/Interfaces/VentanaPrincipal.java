@@ -3,14 +3,18 @@ package Interfaces;
 import Utilidades.Archivo;
 import Utilidades.SimuladorDisco;
 import Utilidades.PersistenciaSistema;
-import java.awt.*;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.tree.*;
-import modelos.Bloque;
 import Utilidades.NodoSerializable;
-import java.util.List;
-import java.util.ArrayList;
+import modelos.Bloque;
+import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
+import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class VentanaPrincipal extends JFrame {
 
@@ -21,36 +25,36 @@ public class VentanaPrincipal extends JFrame {
     private JTextArea estadoDisco;
     private JTable tablaAsignacion;
     private DefaultTableModel modeloTabla;
+    private PanelDisco panelGraficoDisco;
+    private JTextArea logArea; // Área para registrar auditoría
     private boolean esAdmin = true;
     private static final int CANTIDAD_BLOQUES = 10;
 
     public VentanaPrincipal() {
         setTitle("Simulador de Sistema de Archivos");
-        setSize(900, 600);
+        setSize(1100, 750);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        // Intentamos cargar el estado
+        // Cargar estado del sistema
         Bloque[] bloquesCargados = PersistenciaSistema.cargarEstado(CANTIDAD_BLOQUES);
         NodoSerializable nodoRaizCargado = PersistenciaSistema.cargarArbol();
         sd = new SimuladorDisco(CANTIDAD_BLOQUES, bloquesCargados);
 
-        initUI(nodoRaizCargado); // Pasa nodo cargado (puede ser null)
-
-        // Reconstruir la tabla de asignación a partir de los bloques ocupados (si hay estado guardado)
+        initUI(nodoRaizCargado);
         reconstruirTablaAsignacion();
         actualizarEstadoDisco();
+        panelGraficoDisco.actualizarBloques(sd.getBloques());
 
         // Guardar al cerrar ventana
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 PersistenciaSistema.guardarEstado(sd.getBloques());
-
-                // Guardar árbol
                 NodoSerializable nodoGuardar = construirNodoSerializable(raiz);
                 PersistenciaSistema.guardarArbol(nodoGuardar);
-
+                panelGraficoDisco.reiniciarColores();
+                logEvent("Se cerró la aplicación.");
                 System.exit(0);
             }
         });
@@ -59,7 +63,27 @@ public class VentanaPrincipal extends JFrame {
     private void initUI(NodoSerializable nodoRaizCargado) {
         setLayout(new BorderLayout());
 
-        // Configurar JTree
+        // Panel de botones en la parte superior
+        JPanel panelBotones = new JPanel();
+        JButton btnCrearArchivo = new JButton("Crear Archivo");
+        btnCrearArchivo.addActionListener(e -> crearArchivo());
+        JButton btnCrearDirectorio = new JButton("Crear Directorio");
+        btnCrearDirectorio.addActionListener(e -> crearDirectorio());
+        JButton btnEliminar = new JButton("Eliminar");
+        btnEliminar.addActionListener(e -> eliminarNodo());
+        JButton btnModificar = new JButton("Modificar Archivo");
+        btnModificar.addActionListener(e -> modificarNodo());
+        JButton btnAlternarModo = new JButton("Cambiar Modo (Admin/Usuario)");
+        btnAlternarModo.addActionListener(e -> alternarModo(btnCrearArchivo, btnCrearDirectorio, btnEliminar, btnModificar));
+        panelBotones.add(btnCrearArchivo);
+        panelBotones.add(btnCrearDirectorio);
+        panelBotones.add(btnEliminar);
+        panelBotones.add(btnModificar);
+        panelBotones.add(btnAlternarModo);
+        add(panelBotones, BorderLayout.NORTH);
+
+        // Panel Izquierdo: árbol, tabla y registro de auditoría
+        // Árbol de directorios
         if (nodoRaizCargado != null) {
             raiz = reconstruirNodo(nodoRaizCargado);
         } else {
@@ -68,53 +92,55 @@ public class VentanaPrincipal extends JFrame {
         modeloArbol = new DefaultTreeModel(raiz);
         tree = new JTree(modeloArbol);
         JScrollPane panelTree = new JScrollPane(tree);
-        panelTree.setPreferredSize(new Dimension(250, 300));
+        panelTree.setBorder(BorderFactory.createTitledBorder("Directorios"));
+        panelTree.setPreferredSize(new Dimension(300, 300));
 
-        // Área estado disco
-        estadoDisco = new JTextArea();
-        estadoDisco.setEditable(false);
-        JScrollPane panelEstadoDisco = new JScrollPane(estadoDisco);
-        actualizarEstadoDisco();
-
-        // Tabla de asignación
+        // Tabla de asignación de archivos
         String[] columnas = {"Nombre Archivo", "Bloques Asignados", "Primer Bloque"};
         modeloTabla = new DefaultTableModel(columnas, 0);
         tablaAsignacion = new JTable(modeloTabla);
         JScrollPane panelTablaAsignacion = new JScrollPane(tablaAsignacion);
-        panelTablaAsignacion.setPreferredSize(new Dimension(250, 300));
+        panelTablaAsignacion.setBorder(BorderFactory.createTitledBorder("Asignación de Archivos"));
+        panelTablaAsignacion.setPreferredSize(new Dimension(300, 300));
 
-        // Botones
-        JButton btnCrearArchivo = new JButton("Crear Archivo");
-        btnCrearArchivo.addActionListener(e -> crearArchivo());
+        // Registro de auditoría
+        logArea = new JTextArea();
+        logArea.setEditable(false);
+        JScrollPane logScroll = new JScrollPane(logArea);
+        logScroll.setBorder(BorderFactory.createTitledBorder("Registro de auditorías"));
+        logScroll.setPreferredSize(new Dimension(300, 150));
 
-        JButton btnCrearDirectorio = new JButton("Crear Directorio");
-        btnCrearDirectorio.addActionListener(e -> crearDirectorio());
+        // Organizar en el panel izquierdo (usando un BoxLayout vertical)
+        JPanel panelIzquierdo = new JPanel();
+        panelIzquierdo.setLayout(new BoxLayout(panelIzquierdo, BoxLayout.Y_AXIS));
+        panelIzquierdo.add(panelTree);
+        panelIzquierdo.add(panelTablaAsignacion);
+        panelIzquierdo.add(logScroll);
 
-        JButton btnEliminar = new JButton("Eliminar");
-        btnEliminar.addActionListener(e -> eliminarNodo());
+        // Panel Derecho: estado gráfico y textual del disco
+        // Panel gráfico de bloques
+        panelGraficoDisco = new PanelDisco(sd.getBloques());
+        JScrollPane scrollPanelGrafico = new JScrollPane(panelGraficoDisco);
+        scrollPanelGrafico.setBorder(BorderFactory.createTitledBorder("Bloques libres"));
+        scrollPanelGrafico.setPreferredSize(new Dimension(500, 250));
 
-        JButton btnModificar = new JButton("Modificar Archivo");
-        btnModificar.addActionListener(e -> modificarNodo());
+        // Área de estado del disco (texto)
+        estadoDisco = new JTextArea();
+        estadoDisco.setEditable(false);
+        JScrollPane panelEstadoDisco = new JScrollPane(estadoDisco);
+        panelEstadoDisco.setBorder(BorderFactory.createTitledBorder("Estado del Disco"));
+        panelEstadoDisco.setPreferredSize(new Dimension(500, 250));
 
-        JButton btnAlternarModo = new JButton("Cambiar Modo (Admin/Usuario)");
-        btnAlternarModo.addActionListener(e -> alternarModo(btnCrearArchivo, btnCrearDirectorio, btnEliminar, btnModificar));
+        // Organizar panel derecho en vertical
+        JPanel panelDerecho = new JPanel();
+        panelDerecho.setLayout(new BoxLayout(panelDerecho, BoxLayout.Y_AXIS));
+        panelDerecho.add(scrollPanelGrafico);
+        panelDerecho.add(panelEstadoDisco);
 
-        JPanel panelInferior = new JPanel();
-        panelInferior.add(btnCrearArchivo);
-        panelInferior.add(btnCrearDirectorio);
-        panelInferior.add(btnEliminar);
-        panelInferior.add(btnModificar);
-        panelInferior.add(btnAlternarModo);
-
-        // Paneles divididos
-        JSplitPane splitIzquierda = new JSplitPane(JSplitPane.VERTICAL_SPLIT, panelTree, panelTablaAsignacion);
-        splitIzquierda.setDividerLocation(300);
-
-        JSplitPane splitPrincipal = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, splitIzquierda, panelEstadoDisco);
-        splitPrincipal.setDividerLocation(500);
-
+        // Dividir la interfaz en dos partes: Izquierda y Derecha
+        JSplitPane splitPrincipal = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelIzquierdo, panelDerecho);
+        splitPrincipal.setDividerLocation(320);
         add(splitPrincipal, BorderLayout.CENTER);
-        add(panelInferior, BorderLayout.SOUTH);
     }
 
     private void alternarModo(JButton crearArchivo, JButton crearDirectorio, JButton eliminar, JButton modificar) {
@@ -123,39 +149,40 @@ public class VentanaPrincipal extends JFrame {
         crearDirectorio.setEnabled(esAdmin);
         eliminar.setEnabled(esAdmin);
         modificar.setEnabled(esAdmin);
-        JOptionPane.showMessageDialog(this, esAdmin ? "Modo Administrador activado" : "Modo Usuario activado");
+        String mensaje = esAdmin ? "Modo Administrador activado" : "Modo Usuario activado";
+        JOptionPane.showMessageDialog(this, mensaje);
+        logEvent("Se cambió al " + (esAdmin ? "modo Administrador" : "modo Usuario") + ".");
     }
 
     private void crearArchivo() {
         if (!esAdmin) {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear archivos.");
+            logEvent("Intento de creación de archivo en modo Usuario.");
             return;
         }
-
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
-
         if (!nodoPadre.getAllowsChildren()) {
             JOptionPane.showMessageDialog(this, "Selecciona un directorio válido para crear un archivo.");
+            logEvent("Intento de creación de archivo en nodo inválido.");
             return;
         }
-
         String nombre = JOptionPane.showInputDialog(this, "Nombre del archivo:");
         if (nombre != null && !nombre.isEmpty()) {
             int bloquesNecesarios = Integer.parseInt(JOptionPane.showInputDialog(this, "Cantidad de bloques a asignar:"));
             Bloque bloqueInicial = sd.asignarBloques(bloquesNecesarios, nombre);
-
             if (bloqueInicial != null) {
                 Archivo nuevoArchivo = new Archivo(nombre, bloquesNecesarios, bloqueInicial);
-
                 DefaultMutableTreeNode nodoArchivo = new DefaultMutableTreeNode(nuevoArchivo.getNombre() + " (Archivo)", false);
                 modeloArbol.insertNodeInto(nodoArchivo, nodoPadre, nodoPadre.getChildCount());
                 tree.expandPath(new TreePath(nodoPadre.getPath()));
-
                 actualizarTablaAsignacion(nuevoArchivo.getNombre(), nuevoArchivo.getTamano(), nuevoArchivo.getPrimerBloque().getId());
                 actualizarEstadoDisco();
+                panelGraficoDisco.actualizarBloques(sd.getBloques());
+                logEvent("Se creó el archivo '" + nombre + "' asignando " + bloquesNecesarios + " bloques.");
             } else {
                 JOptionPane.showMessageDialog(this, "No hay suficientes bloques disponibles.");
+                logEvent("Error al crear archivo '" + nombre + "': no hay bloques disponibles.");
             }
         }
     }
@@ -163,51 +190,60 @@ public class VentanaPrincipal extends JFrame {
     private void crearDirectorio() {
         if (!esAdmin) {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede crear directorios.");
+            logEvent("Intento de creación de directorio en modo Usuario.");
             return;
         }
-
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         DefaultMutableTreeNode nodoPadre = (nodoSeleccionado == null) ? raiz : nodoSeleccionado;
-
         if (!nodoPadre.getAllowsChildren()) {
             JOptionPane.showMessageDialog(this, "Selecciona un directorio válido para crear un subdirectorio.");
+            logEvent("Intento de creación de directorio en nodo inválido.");
             return;
         }
-
         String nombre = JOptionPane.showInputDialog(this, "Nombre del directorio:");
         if (nombre != null && !nombre.isEmpty()) {
             DefaultMutableTreeNode nuevoDirectorio = new DefaultMutableTreeNode(nombre + " (Directorio)", true);
             modeloArbol.insertNodeInto(nuevoDirectorio, nodoPadre, nodoPadre.getChildCount());
             tree.expandPath(new TreePath(nodoPadre.getPath()));
+            logEvent("Se creó el directorio '" + nombre + "'.");
         }
     }
 
+    // Método para eliminar nodos y sus subnodos, liberando bloques de archivos
     private void eliminarNodo() {
         if (!esAdmin) {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede eliminar elementos.");
+            logEvent("Intento de eliminación en modo Usuario.");
             return;
         }
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
-
         if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
-            String nombreNodo = nodoSeleccionado.getUserObject().toString();
-            if (nombreNodo.contains("(Archivo)")) {
-                // Se obtiene el nombre real del archivo sin la etiqueta "(Archivo)"
-                String nombreArchivo = nombreNodo.replace(" (Archivo)", "");
-                // Recorrer todos los bloques y liberar los que pertenezcan a este archivo
-                for (Bloque bloque : sd.getBloques()) {
-                    if (bloque.estaOcupado() && bloque.getNombreArchivo().equals(nombreArchivo)) {
-                        bloque.liberar();
-                    }
-                }
-                // Se elimina la fila de la tabla y se actualiza el estado del disco
-                eliminarDeTabla(nombreNodo);
-                actualizarEstadoDisco();
-                reconstruirTablaAsignacion();
-            }
+            eliminarSubarbol(nodoSeleccionado);
             modeloArbol.removeNodeFromParent(nodoSeleccionado);
+            actualizarEstadoDisco();
+            reconstruirTablaAsignacion();
+            panelGraficoDisco.actualizarBloques(sd.getBloques());
+            logEvent("Se eliminó el nodo '" + nodoSeleccionado.getUserObject().toString() + "' y sus subnodos.");
         } else {
             JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para eliminar.");
+        }
+    }
+    
+    // Método recursivo para eliminar nodos hijos y liberar bloques (si son archivos)
+    private void eliminarSubarbol(DefaultMutableTreeNode nodo) {
+        for (int i = nodo.getChildCount() - 1; i >= 0; i--) {
+            DefaultMutableTreeNode hijo = (DefaultMutableTreeNode) nodo.getChildAt(i);
+            eliminarSubarbol(hijo);
+        }
+        String nombreNodo = nodo.getUserObject().toString();
+        if (nombreNodo.contains("(Archivo)")) {
+            String nombreArchivo = nombreNodo.replace(" (Archivo)", "");
+            for (Bloque bloque : sd.getBloques()) {
+                if (bloque.estaOcupado() && bloque.getNombreArchivo().equals(nombreArchivo)) {
+                    bloque.liberar();
+                }
+            }
+            eliminarDeTabla(nombreNodo);
         }
     }
 
@@ -232,14 +268,17 @@ public class VentanaPrincipal extends JFrame {
     private void modificarNodo() {
         if (!esAdmin) {
             JOptionPane.showMessageDialog(this, "Modo usuario: no puede modificar elementos.");
+            logEvent("Intento de modificación en modo Usuario.");
             return;
         }
         DefaultMutableTreeNode nodoSeleccionado = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
         if (nodoSeleccionado != null && nodoSeleccionado != raiz) {
-            String nuevoNombre = JOptionPane.showInputDialog(this, "Nuevo nombre:", nodoSeleccionado.getUserObject().toString());
+            String nombreAnterior = nodoSeleccionado.getUserObject().toString();
+            String nuevoNombre = JOptionPane.showInputDialog(this, "Nuevo nombre:", nombreAnterior);
             if (nuevoNombre != null && !nuevoNombre.isEmpty()) {
                 nodoSeleccionado.setUserObject(nuevoNombre);
                 modeloArbol.nodeChanged(nodoSeleccionado);
+                logEvent("Se modificó el nodo '" + nombreAnterior + "' a '" + nuevoNombre + "'.");
             }
         } else {
             JOptionPane.showMessageDialog(this, "Seleccione un nodo válido para modificar.");
@@ -250,15 +289,15 @@ public class VentanaPrincipal extends JFrame {
         modeloTabla.addRow(new Object[]{nombreArchivo, bloques, primerBloque});
     }
     
-    // Método que recorre los bloques ocupados y reconstruye la tabla de asignación
+    // Reconstruir la tabla de asignación a partir de los bloques ocupados
     private void reconstruirTablaAsignacion() {
-        modeloTabla.setRowCount(0); // Limpiar la tabla
+        modeloTabla.setRowCount(0);
         Bloque[] bloques = sd.getBloques();
         for (Bloque bloque : bloques) {
             if (bloque.estaOcupado() && esPrimerBloque(bloque, bloques)) {
                 int contador = 0;
                 Bloque actual = bloque;
-                while (actual != null && actual.estaOcupado() && 
+                while (actual != null && actual.estaOcupado() &&
                        actual.getNombreArchivo().equals(bloque.getNombreArchivo())) {
                     contador++;
                     actual = actual.getSiguiente();
@@ -268,7 +307,7 @@ public class VentanaPrincipal extends JFrame {
         }
     }
     
-    // Método auxiliar para determinar si el bloque es el primero de la cadena
+    // Verifica si el bloque es el primero de la cadena
     private boolean esPrimerBloque(Bloque bloque, Bloque[] bloques) {
         for (Bloque b : bloques) {
             if (b.getSiguiente() != null && b.getSiguiente().getId() == bloque.getId()) {
@@ -292,7 +331,15 @@ public class VentanaPrincipal extends JFrame {
         estadoDisco.setText(sb.toString());
     }
 
-    // ======== MÉTODOS para persistencia del árbol =========
+    // Método para registrar eventos en la auditoría con marca de tiempo y usuario
+    private void logEvent(String evento) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        String timestamp = dtf.format(LocalDateTime.now());
+        String usuario = esAdmin ? "Administrador" : "Usuario";
+        logArea.append("[" + timestamp + "][" + usuario + "]: " + evento + "\n");
+    }
+
+    // Métodos para persistir el árbol
     private NodoSerializable construirNodoSerializable(DefaultMutableTreeNode nodo) {
         String nombre = nodo.getUserObject().toString();
         NodoSerializable nodoSer = new NodoSerializable(nombre, nodo.getAllowsChildren());
@@ -312,10 +359,10 @@ public class VentanaPrincipal extends JFrame {
     }
 
     public static void main(String[] args) {
-        EventQueue.invokeLater(() -> {
-            new VentanaPrincipal().setVisible(true);
-        });
+        EventQueue.invokeLater(() -> new VentanaPrincipal().setVisible(true));
     }
 }
+
+
 
 
